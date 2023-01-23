@@ -1,0 +1,231 @@
+(function () {
+  "use strict";
+
+  let tagStylesheet = document.createElement("style");
+  tagStylesheet.innerHTML =
+    `.-meow-tagmanager-button:hover {color: var(--text-link);}
+.-meow-tagmanager-window-close:hover {opacity: 1 !important;}
+#-meow-tagmanager-window-colorpicker-preview:hover {-webkit-box-shadow: inset 0px 0px 3px 0px rgba(0,0,0,0.75); box-shadow: inset 0px 0px 3px 0px rgba(0,0,0,0.75);}
+#-meow-tagmanager-window-colorpicker-preview:active {-webkit-box-shadow: inset 0px 0px 5px 0px rgba(0,0,0,0.75); box-shadow: inset 0px 0px 5px 0px rgba(0,0,0,0.75);}
+.-meow-tagmanager-window-submit:hover {background-color: #677bc4 !important;}
+.color-picker .color-picker\\:a {display: none;}
+
+.color-picker,.color-picker *,.color-picker ::after,.color-picker ::before,.color-picker::after,.color-picker::before{box-sizing:border-box}.color-picker{position:absolute;top:0;left:0;z-index:9999;box-shadow:1px 3px 6px rgba(0,0,0,.5)}.color-picker>div{display:flex;height:10em;border:1px solid #000;color:#000}.color-picker>div *{border-color:inherit;color:inherit}.color-picker i{font:inherit;font-size:12px}.color-picker\\:a,.color-picker\\:h,.color-picker\\:sv{background-size:100% 100%;position:relative}.color-picker\\:a,.color-picker\\:h{width:1.5em;border-left:1px solid;cursor:ns-resize;overflow:hidden}.color-picker\\:a div,.color-picker\\:h div,.color-picker\\:sv div{position:absolute;top:0;right:0;bottom:0;left:0}.color-picker\\:a i,.color-picker\\:h i{display:block;height:.5em;position:absolute;top:-.25em;right:0;left:0;z-index:2}.color-picker\\:a i::before,.color-picker\\:h i::before{display:block;content:"";position:absolute;top:0;right:0;bottom:0;left:0;border:.25em solid;border-top-color:transparent;border-bottom-color:transparent}.color-picker\\:sv{width:10em;cursor:crosshair;overflow:hidden}.color-picker\\:sv i{display:block;width:.75em;height:.75em;position:absolute;top:-.375em;right:-.375em;z-index:2}.color-picker\\:sv i::before{display:block;content:"";position:absolute;top:0;right:0;bottom:0;left:0;border:1px solid #fff;border-radius:100%;box-shadow:0 0 2px #000}.color-picker\\:a div{z-index:2}.color-picker\\:a div+div{background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%,#ddd 100%),linear-gradient(45deg,#ddd 25%,#fff 25%,#fff 75%,#ddd 75%,#ddd 100%);background-size:.5em .5em;background-position:0 0,.25em .25em;z-index:1}.color-picker\\:h div{background-image:linear-gradient(to top,red 0,#ff0 17%,#0f0 33%,#0ff 50%,#00f 67%,#f0f 83%,red 100%)}.color-picker\\:sv div+div{background-image:linear-gradient(to right,#fff,rgba(255,255,255,0))}.color-picker\\:sv div+div+div{background-image:linear-gradient(to top,#000,rgba(0,0,0,0))}.color-picker\\:a,.color-picker\\:h,.color-picker\\:sv{-webkit-touch-callout:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-tap-highlight-color:transparent}`;
+  document.head.appendChild(tagStylesheet);
+
+  const iframe = document.createElement("iframe");
+  iframe.style.display = "none";
+  document.body.prepend(iframe);
+  window.localStorage = iframe.contentWindow.localStorage;
+
+  let browserStorage = {};
+
+  browserStorage.setItem = (key, value) => {
+    if (value instanceof Object)
+      return localStorage.setItem(key, JSON.stringify(value));
+    return localStorage.setItem(key, value);
+  };
+  browserStorage.getItem = (key) => {
+    let data = localStorage.getItem(key);
+    try {
+      data = JSON.parse(data);
+    } catch (e) {}
+    return data;
+  };
+
+  let tags = browserStorage.getItem("meow-tags") || { tags: [] };
+
+  setInterval(function () {
+    let DMButtons = document.querySelectorAll(
+      'a[id*="private-channels-"][href*="/channels/@me/"]'
+    );
+    if (!DMButtons) return;
+
+    DMButtons.forEach((btn) => {
+      let id = btn.href.split("/").pop();
+      let tagIDs = [];
+      tags.tags.forEach((t) => {
+        tagIDs.push(t.id);
+      });
+      if (!tagIDs.includes(id))
+        tags.tags.push({ label: "No Data", color: "#000000", id: id });
+    });
+
+    tags.tags.forEach((tag) => {
+      let dm = document.querySelector(
+        'a[href="/channels/@me/' +
+          tag.id +
+          '"]:not([aria-label="Home"]):not([class*="wrapper"])'
+      );
+      if (!dm) return;
+
+      let dmobj = {
+        dm: dm,
+        name: dm.querySelector('div[class*="nameAndDecorators"]'),
+      };
+
+      try {
+        dmobj.name.style.color = tag.color == "#000000" ? "inherit" : tag.color;
+      } catch (e) {
+        console.error(e);
+      }
+
+      let tagButton = document.createElement("div");
+      tagButton.innerHTML = tag.label || "No Description";
+      tagButton.className = "-meow-tagmanager-button";
+      tagButton.style["font-size"] = "10px";
+      tagButton.style["font-weight"] = "500";
+      tagButton.style["white-space"] = "nowrap";
+      tagButton.style["text-overflow"] = "ellipsis";
+      tagButton.style.overflow = "hidden";
+      tagButton.style.display = "table";
+
+      tagButton.onclick = function () {
+        let tagWindow = document.createElement("div");
+        tagWindow.className = "-meow-tagmanager-window";
+        tagWindow.style.width = "40vw";
+        tagWindow.style.height = "50vh";
+        tagWindow.style["background-color"] = "var(--background-floating)";
+        tagWindow.style.display = "block";
+        tagWindow.style.position = "absolute";
+        tagWindow.style["border-radius"] = "6px";
+        tagWindow.style.left = "50%";
+        tagWindow.style.top = "50%";
+        tagWindow.style.transform = "translate(-50%, -50%)";
+        tagWindow.style.color = "var(--text-normal)";
+
+        let tagWindowHeaderName = "Unknown";
+        try {
+          tagWindowHeaderName = dmobj.name.querySelector('[class*="overflow"]')
+            .innerHTML;
+        } catch (e) {
+          console.error(e);
+        }
+
+        let tagWindowHeader = document.createElement("div");
+        tagWindowHeader.className = "-meow-tagmanager-window-header";
+        tagWindowHeader.innerHTML = "Manage DM with " + tagWindowHeaderName;
+        tagWindowHeader.style.position = "absolute";
+        tagWindowHeader.style.top = "5px";
+        tagWindowHeader.style.left = "5px";
+        tagWindow.appendChild(tagWindowHeader);
+
+        let tagWindowClose = document.createElement("div");
+        tagWindowClose.className = "-meow-tagmanager-window-close";
+        tagWindowClose.innerHTML = `<svg style="display:block;width:16px;height:16px;" width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M18.4 4L12 10.4L5.6 4L4 5.6L10.4 12L4 18.4L5.6 20L12 13.6L18.4 20L20 18.4L13.6 12L20 5.6L18.4 4Z"></path></svg>`;
+        tagWindowClose.style.position = "absolute";
+        tagWindowClose.style.top = "5px";
+        tagWindowClose.style.right = "5px";
+        tagWindowClose.style.opacity = 0.7;
+        tagWindowClose.style.cursor = "pointer";
+        tagWindowClose.onclick = function () {
+          tagWindowClose.parentElement.remove();
+        };
+        tagWindow.appendChild(tagWindowClose);
+
+        let tagWindowContent = document.createElement("div");
+        tagWindowContent.className = "-meow-tagmanager-window-content";
+        tagWindowContent.style.position = "absolute";
+        tagWindowContent.style.top = "calc(10px + 1em)";
+        tagWindowContent.style.left = "5px";
+
+        let tagWindowColorPickerHeader = document.createElement("div");
+        tagWindowColorPickerHeader.className =
+          "-meow-tagmanager-window-colorpicker";
+        tagWindowColorPickerHeader.innerHTML = "Choose a Color";
+        tagWindowColorPickerHeader.style["font-weight"] = "600";
+        tagWindowColorPickerHeader.style["text-transform"] = "uppercase";
+        tagWindowColorPickerHeader.style["margin-bottom"] = "6px";
+        tagWindowColorPickerHeader.style.color = "var(--channels-default)";
+        tagWindowColorPickerHeader.style["font-size"] = "12px";
+        tagWindowContent.appendChild(tagWindowColorPickerHeader);
+
+        let tagWindowColorPickerPreview = document.createElement("div");
+        tagWindowColorPickerPreview.id = "-meow-tagmanager-window-colorpicker-preview";
+        //tagWindowColorPickerPreview.innerHTML = `<svg x="0" y="0" aria-hidden="false" width="14" height="14" viewBox="0 0 18 18"><polygon fill-rule="nonzero" fill="#FFFFFF" points="15 10 10 10 10 15 8 15 8 10 3 10 3 8 8 8 8 3 10 3 10 8 15 8"></polygon></svg>`
+        tagWindowColorPickerPreview.style["background-color"] = (tag.color == "#000000" ? "var(--text-normal)" : tag.color);
+        tagWindowColorPickerPreview.style.width = "20px";
+        tagWindowColorPickerPreview.style.height = "20px";
+        tagWindowColorPickerPreview.style["border-radius"] = "3px";
+        tagWindowColorPickerPreview.style["margin-right"] = "4px";
+        tagWindowColorPickerPreview.style.display = "inline-flex";
+        tagWindowColorPickerPreview.style["vertical-align"] = "bottom";
+        tagWindowColorPickerPreview.style["-webkit-box-pack"] = "center";
+        tagWindowColorPickerPreview.style["justify-content"] = "center";
+        tagWindowColorPickerPreview.style["-webkit-box-align"] = "center";
+        tagWindowColorPickerPreview.style["align-items"] = "center";
+        tagWindowColorPickerPreview.style.cursor = "pointer";
+        tagWindowColorPickerPreview.style.padding = "0";
+        tagWindowContent.appendChild(tagWindowColorPickerPreview);
+
+        let tagWindowColorPicker = document.createElement("input");
+        tagWindowColorPicker.type = "text";
+        tagWindowColorPicker.style["border-radius"] = "3px";
+        tagWindowColorPicker.style.border = "0";
+        tagWindowColorPicker.value = tag.color || "#000000";
+        tagWindowColorPicker.id = "-meow-tagmanager-colorpicker";
+        tagWindowContent.appendChild(tagWindowColorPicker);
+
+        tagWindow.appendChild(tagWindowContent);
+
+        let tagWindowSubmit = document.createElement("button");
+        tagWindowSubmit.className = "-meow-tagmanager-window-submit";
+        tagWindowSubmit.innerHTML = "Submit";
+        tagWindowSubmit.style.position = "absolute";
+        tagWindowSubmit.style.bottom = "8px";
+        tagWindowSubmit.style.right = "8px";
+        tagWindowSubmit.style.width = "96px";
+        tagWindowSubmit.style.height = "38px";
+        tagWindowSubmit.style["webkit-transition"] =
+          "background-color .17s ease,color .17s ease";
+        tagWindowSubmit.style.transition =
+          "background-color .17s ease,color .17s ease";
+        tagWindowSubmit.style.color = "#fff";
+        tagWindowSubmit.style["background-color"] = "#7289da";
+        tagWindowSubmit.style.display = "flex";
+        tagWindowSubmit.style["-webkit-box-pack"] = "center";
+        tagWindowSubmit.style["justify-content"] = "center";
+        tagWindowSubmit.style["align-items"] = "center";
+        tagWindowSubmit.style["box-sizing"] = "border-box";
+        tagWindowSubmit.style.border = "none";
+        tagWindowSubmit.style["border-radius"] = "3px";
+        tagWindowSubmit.style["font-size"] = "14px";
+        tagWindowSubmit.style["font-weight"] = "500";
+        tagWindowSubmit.style["line-height"] = "16px";
+        tagWindowSubmit.style.padding = "2px 16px";
+        tagWindowSubmit.style["user-select"] = "none";
+        tagWindowSubmit.onclick = function () {
+          tags.tags[tags.tags.indexOf(tag)].color =
+            document.getElementById("-meow-tagmanager-colorpicker").value ||
+            "#000000";
+          tagWindowSubmit.parentElement.remove();
+        };
+        tagWindow.appendChild(tagWindowSubmit);
+
+        document.body.appendChild(tagWindow);
+
+        let tagWindowPicker = new CP(
+          document.getElementById("-meow-tagmanager-colorpicker")
+        );
+
+        tagWindowPicker.on("change", function (r, g, b) {
+          let color = this.color(r, g, b, 1);
+          this.source.value = color;
+            document.getElementById("-meow-tagmanager-window-colorpicker-preview").style["background-color"] = (color == "#000000" ? "var(--text-normal)" : color);
+        });
+      };
+
+      try {
+        let buttonParent = dm.querySelector('div[class*="nameAndDecorators"]')
+          .parentElement;
+        buttonParent = buttonParent.querySelector('[class*="subText"]');
+        if (!buttonParent.querySelector('[class*="-meow-tagmanager-button"]'))
+          buttonParent.appendChild(tagButton);
+        buttonParent.parentElement.parentElement.style.padding = "3px 8px 3px";
+      } catch (e) {
+        console.error(e);
+      }
+    });
+    browserStorage.setItem("meow-tags", tags);
+  }, 1000);
+})();
